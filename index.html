@@ -131,7 +131,12 @@ async function connectBLE(){
  try{
   const d=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'BalanceBoard'}],optionalServices:[SVC]});
   d.addEventListener('gattserverdisconnected',()=>{live=false;lastT=0});
-  const srv=await d.gatt.connect(),ch=await(await srv.getPrimaryService(SVC)).getCharacteristic(CHR);
+  let srv,ch,err;
+  for(let i=0;i<3&&!ch;i++){
+   try{srv=await d.gatt.connect();await new Promise(r=>setTimeout(r,600));ch=await(await srv.getPrimaryService(SVC)).getCharacteristic(CHR)}
+   catch(e){err=e;try{d.gatt.disconnect()}catch(x){}await new Promise(r=>setTimeout(r,1500))}
+  }
+  if(!ch)throw err;
   await ch.startNotifications();
   ch.addEventListener('characteristicvaluechanged',e=>onPacket(e.target.value));
   lastT=0;live=true;
